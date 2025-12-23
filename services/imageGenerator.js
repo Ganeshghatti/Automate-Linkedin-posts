@@ -1,62 +1,48 @@
-// import axios from "axios";
-
-// export async function generateImage(prompt) {
-//   try {
-//     const response = await axios.post(
-//       "https://api.openai.com/v1/images/generations",
-//       {
-//         model: "gpt-image-1",
-//         prompt,
-//         size: "1024x1024",
-//       },
-//       {
-//         headers: {
-//           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-//           "Content-Type": "application/json",
-//         },
-//       }
-//     );
-
-//     const base64Image = response.data.data[0].b64_json;
-
-//     const imageBuffer = Buffer.from(base64Image, "base64");
-
-//     return imageBuffer;
-//   } catch (error) {
-//     console.error("Error generating image:", error.response?.data || error.message);
-//     throw error;
-//   }
-// }
-
-// export async function generateImages(prompts) {
-//   const images = [];
-
-//   for (const prompt of prompts) {
-//     const image = await generateImage(prompt);
-//     images.push(image);
-//   }
-
-//   return images;
-// }
-
 import axios from "axios";
+import fs from "fs";
 
-export async function generateImage(prompt) {
+function imageToInlineData(filePath) {
+  const buffer = fs.readFileSync(filePath);
+
+  return {
+    inlineData: {
+      mimeType: "image/png",
+      data: buffer.toString("base64"),
+    },
+  };
+}
+
+export async function generateImage(postText) {
   try {
     const modelId = "gemini-2.5-flash-image";
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+
+    const visualPrompt = `
+    Create a clean, professional LinkedIn-style image.
+    IMPORTANT:
+    - Follow ONLY the visual style of the reference images (colors, layout, typography)
+    - Do NOT copy content from reference images
+    - Keep design minimal and modern
+    - Suitable for LinkedIn feed
+    Post content:
+    "${postText}"
+    `;
 
     const response = await axios.post(
       url,
       {
         contents: [
           {
-            parts: [{ text: prompt }],
+            parts: [
+              { text: visualPrompt },
+              imageToInlineData("media/1.png"),
+              imageToInlineData("media/2.png"),
+              imageToInlineData("media/3.png"),
+            ],
           },
         ],
         generationConfig: {
-          // Required to tell the model to output an image instead of text
           responseModalities: ["IMAGE"],
         },
       },
@@ -64,21 +50,17 @@ export async function generateImage(prompt) {
         headers: { "Content-Type": "application/json" },
       }
     );
-    console.log("Response ",response)
 
-    // FIX: The response path for :generateContent is different
-    // It's candidates -> content -> parts -> inlineData -> data
     const imagePart = response.data.candidates?.[0]?.content?.parts?.find(
       (part) => part.inlineData
     );
 
-    if (!imagePart || !imagePart.inlineData?.data) {
+    if (!imagePart) {
       throw new Error(
         "No image data returned. Prompt may have been blocked by safety filters."
       );
     }
 
-    // Convert the base64 string to a Buffer
     return Buffer.from(imagePart.inlineData.data, "base64");
   } catch (error) {
     const errorMsg = error.response?.data?.error?.message || error.message;
