@@ -87,12 +87,6 @@ console.log("visualPrompt ", visualPrompt);
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-image",
       contents: contents,
-      config: {
-        imageConfig: {
-          aspectRatio: aspectRatio,
-          imageSize: imageSize,
-        },
-      },
     });
 
     const imagePart = response.candidates?.[0]?.content?.parts?.find(
