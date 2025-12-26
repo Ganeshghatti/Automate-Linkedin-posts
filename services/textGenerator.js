@@ -52,27 +52,39 @@ async function generatePostText(topic) {
       ],
     }),
   ]);
-  console.log("Hi response ",response)
+  console.log("Hi response ", response);
   return response.post;
 }
 
 export async function generateSinglePost(topic) {
   const postText = await generatePostText(topic);
-  console.log("POST TEXT:", postText);
   const imageBuffer = await generateImage(postText);
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/png;base64,${base64Image}`;
   return {
     post: postText,
-    image: imageUrl,
+    images: [imageUrl],
   };
 }
 
 export async function generateCarouselPost(topic) {
-  const base = await generateBaseContent(topic, 5);
-  const images = await generateImages(base.imagePrompts);
+  const postText = await generatePostText(topic);
+
+  const slideContexts = [
+    "Introduction / Hook",
+    "Key Insight 1",
+    "Key Insight 2",
+    "Key Insight 3",
+    "Summary / Call to Action",
+  ];
+
+  const imageBuffers = await generateImages(postText, slideContexts);
+  console.log("Buffers ",imageBuffers)
+  const images = imageBuffers.map(
+    (buffer) => `data:image/png;base64,${buffer.toString("base64")}`
+  );
   return {
-    post: base.post,
-    images, // Buffer[]
+    post: postText,
+    images,
   };
 }

@@ -1,56 +1,3 @@
-// import axios from "axios";
-
-// const publishLinkedinPost = async ({ text }) => {
-//   try {
-//     const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
-//     const personId = process.env.LINKEDIN_PERSON_ID;
-
-//     if (!accessToken || !personId) {
-//       throw new Error("LinkedIn credentials missing");
-//     }
-
-//     // Prepare the post data
-//     let postData = {
-//       author: `urn:li:person:${personId}`,
-//       lifecycleState: "PUBLISHED",
-//       specificContent: {
-//         "com.linkedin.ugc.ShareContent": {
-//           shareCommentary: {
-//             text,
-//           },
-//           shareMediaCategory: "NONE",
-//         },
-//       },
-//       visibility: {
-//         "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
-//       },
-//     };
-
-//     const response = await axios.post(
-//       "https://api.linkedin.com/v2/ugcPosts",
-//       postData,
-//       {
-//         headers: {
-//           Authorization: `Bearer ${accessToken}`,
-//           "Content-Type": "application/json",
-//           "X-Restli-Protocol-Version": "2.0.0",
-//         },
-//       }
-//     );
-
-//     console.log("LinkedIn post published successfully:", response.data);
-//     return response.data.id;
-//   } catch (error) {
-//     console.error(
-//       "Error publishing LinkedIn post:",
-//       error.response?.data || error.message
-//     );
-//     throw error;
-//   }
-// };
-
-// export default publishLinkedinPost;
-
 import axios from "axios";
 import { PDFDocument } from "pdf-lib";
 
@@ -137,11 +84,7 @@ export async function publishLinkedinDocumentPost({ text, images }) {
       throw new Error("LinkedIn credentials missing");
     }
 
-    /**
-     * STEP 1: Create PDF from images
-     */
     const pdfDoc = await PDFDocument.create();
-
     for (const imageBuffer of images) {
       const image = await pdfDoc.embedPng(imageBuffer);
       const page = pdfDoc.addPage([image.width, image.height]);
@@ -152,24 +95,14 @@ export async function publishLinkedinDocumentPost({ text, images }) {
         height: image.height,
       });
     }
-
     const pdfBytes = await pdfDoc.save();
 
-    /**
-     * STEP 2: Register document upload
-     */
     const registerRes = await axios.post(
       "https://api.linkedin.com/v2/assets?action=registerUpload",
       {
         registerUploadRequest: {
           recipes: ["urn:li:digitalmediaRecipe:feedshare-document"],
           owner: `urn:li:person:${personId}`,
-          serviceRelationships: [
-            {
-              relationshipType: "OWNER",
-              identifier: "urn:li:userGeneratedContent",
-            },
-          ],
         },
       },
       {
@@ -188,9 +121,6 @@ export async function publishLinkedinDocumentPost({ text, images }) {
 
     const asset = registerRes.data.value.asset;
 
-    /**
-     * STEP 3: Upload PDF
-     */
     await axios.put(uploadUrl, pdfBytes, {
       headers: {
         "Content-Type": "application/pdf",
@@ -198,9 +128,6 @@ export async function publishLinkedinDocumentPost({ text, images }) {
       maxBodyLength: Infinity,
     });
 
-    /**
-     * STEP 4: Publish DOCUMENT post
-     */
     const postRes = await axios.post(
       "https://api.linkedin.com/v2/ugcPosts",
       {
