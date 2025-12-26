@@ -58,7 +58,7 @@ async function generatePostText(topic) {
 
 export async function generateSinglePost(topic) {
   const postText = await generatePostText(topic);
-  const imageBuffer = await generateImage(postText);
+  const imageBuffer = await generateImage(topic);
   const base64Image = imageBuffer.toString("base64");
   const imageUrl = `data:image/png;base64,${base64Image}`;
   return {
